@@ -17,7 +17,7 @@ namespace MeasuritySteamBot.Steam
         {
             Username = username;
             Password = password;
-            Plugins = new PluginManager("Plugins");
+            Plugins = new PluginManager(this, "Plugins");
         }
 
         public string Username { get; set; }
@@ -183,7 +183,7 @@ namespace MeasuritySteamBot.Steam
             WriteHeader("Loading plugins");
 
             // Load all plugin assemblies.
-            Plugins.LoadPlugins(this);
+            Plugins.LoadPlugins();
         }
 
         public void Execute(string input, ulong steamId = 0)
@@ -238,10 +238,29 @@ namespace MeasuritySteamBot.Steam
         /// </summary>
         /// <param name="message">Message to send.</param>
         /// <param name="steamId">SteamId to send message to. If null, sends message to <see cref="Console" />.</param>
-        protected internal void SendMessage(string message, SteamID steamId = null)
+        public void SendMessage(string message, SteamID steamId = null)
         {
-            if (steamId == 0)
+            if (steamId == null || steamId == 0)
                 Console.WriteLine(message);
+            else
+                Friends.SendChatMessage(steamId, EChatEntryType.ChatMsg, message);
+        }
+
+        /// <summary>
+        /// Sends an error message to the requesting user.
+        /// </summary>
+        /// <param name="message">Error message to send.</param>
+        /// <param name="steamId">SteamId to send error message to. If null, sends error message to <see cref="Console" />.</param>
+        public void SendErrorMessage(string message, SteamID steamId = null)
+        {
+            message = "Error: " + message;
+            if (steamId == null || steamId == 0)
+            {
+                var oldColor = Console.ForegroundColor;
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(message);
+                Console.ForegroundColor = oldColor;
+            }
             else
                 Friends.SendChatMessage(steamId, EChatEntryType.ChatMsg, message);
         }

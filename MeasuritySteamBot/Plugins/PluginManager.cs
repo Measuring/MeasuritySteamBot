@@ -11,20 +11,32 @@ namespace MeasuritySteamBot.Plugins
 {
     internal class PluginManager : IDisposable
     {
-        public PluginManager(string folder)
+        public PluginManager(Bot bot, string pluginsDir, string dataDir = "Data")
         {
-            if (!Directory.Exists(folder))
-                throw new DirectoryNotFoundException(string.Format("Directory {0} not found.", folder));
+            if (!Directory.Exists(pluginsDir))
+                Directory.CreateDirectory(Path.Combine(pluginsDir, dataDir));
 
+            Bot = bot;
+            PluginsDir = pluginsDir;
+            DataDir = dataDir;
             SetupDomain();
             Plugins = new List<PluginAssembly>();
-            Folder = folder;
         }
 
         /// <summary>
-        ///     Folder to search for plugins.
+        ///     PluginsDir to search for plugins.
         /// </summary>
-        public string Folder { get; set; }
+        public string PluginsDir { get; protected set; }
+
+        /// <summary>
+        ///     Relative path that will be appended to the <see cref="PluginsDir" /> property.
+        /// </summary>
+        public string DataDir { get; protected set; }
+
+        /// <summary>
+        ///     <see cref="Bot" /> that is requesting plugins.
+        /// </summary>
+        public Bot Bot { get; protected internal set; }
 
         public List<PluginAssembly> Plugins { get; set; }
         public AppDomain Domain { get; protected set; }
@@ -40,14 +52,15 @@ namespace MeasuritySteamBot.Plugins
         protected void SetupDomain()
         {
             // TODO: Enable hot plugin reloading through separate AppDomain.
-            var setup = new AppDomainSetup
-            {
-                ApplicationBase = AppDomain.CurrentDomain.BaseDirectory
-            };
+            //var setup = new AppDomainSetup
+            //{
+            //    ApplicationBase = AppDomain.CurrentDomain.BaseDirectory
+            //};
             //Domain = AppDomain.CreateDomain("SteamBotPluginDomain", AppDomain.CurrentDomain.Evidence, setup);
             Domain = AppDomain.CurrentDomain;
             Domain.AssemblyResolve += AssemblyResolve;
             Domain.ReflectionOnlyAssemblyResolve += AssemblyResolve;
+            //Domain.FirstChanceException += (sender, args) => Bot.SendErrorMessage(args.Exception.ToString());
         }
 
         protected Assembly AssemblyResolve(object sender, ResolveEventArgs args)
@@ -62,12 +75,11 @@ namespace MeasuritySteamBot.Plugins
         /// <summary>
         ///     Loads all the plugins into the <see cref="PluginManager" />.
         /// </summary>
-        /// <param name="bot"></param>
-        public void LoadPlugins(Bot bot)
+        public void LoadPlugins()
         {
-            foreach (var plugin in new DirectoryInfo(Folder).GetFiles("*.dll"))
+            foreach (var plugin in new DirectoryInfo(PluginsDir).GetFiles("*.dll"))
             {
-                LoadPlugin(bot, plugin);
+                LoadPlugin(Bot, plugin);
             }
         }
 
@@ -81,8 +93,13 @@ namespace MeasuritySteamBot.Plugins
             // Cache plugin metadata through reflection.
             var plugin = new PluginAssembly(Domain, pluginDll.Name);
 
-            // Initialize plugin.
+            // Global per plugin initialze.
             plugin.Plugin.Bot = bot;
+            plugin.Plugin.PluginsDir = PluginsDir;
+            plugin.Plugin.DataDir = Path.Combine(PluginsDir, DataDir, plugin.Assembly.GetName().Name);
+            plugin.Plugin.Setup(plugin);
+
+            // Plugin specific initialize.
             plugin.Plugin.Initialize();
 
             Plugins.Add(plugin);

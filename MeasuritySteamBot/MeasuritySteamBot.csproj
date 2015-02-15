@@ -51,6 +51,7 @@
     <Compile Include="Attributes\BotDisplayAttribute.cs" />
     <Compile Include="Attributes\BotPluginAttribute.cs" />
     <Compile Include="Plugins\BasePlugin.cs" />
+    <Compile Include="Plugins\BaseSettings.cs" />
     <Compile Include="Plugins\PluginAssembly.cs" />
     <Compile Include="Plugins\PluginCategory.cs" />
     <Compile Include="Plugins\PluginCommand.cs" />

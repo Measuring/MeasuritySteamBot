@@ -17,10 +17,8 @@ namespace Minecraft.Categories
         [BotDisplay(Description = "Starts the Minecraft server.")]
         public void Start()
         {
-            // TODO: Add plugin data folder support for writing and reading settings.
-
-            Plugin.Instance.SendMessage("Server starting..");
-            var path = @"D:\Games\Minecraft\Servers\Monster 1.1.2\ServerStart.bat";
+            Plugin.Instance.SendMessage("Server starting.. (this will take a while)");
+            var path = Path.Combine(Plugin.Instance.Settings.ServerDirectory, Plugin.Instance.Settings.ExeName);
             _minecraftProcess = new Process
             {
                 StartInfo =
@@ -54,7 +52,7 @@ namespace Minecraft.Categories
             // Check if server has started yet.
             if (e.Data.IndexOf("Started up server", StringComparison.OrdinalIgnoreCase) < 0)
                 return;
-            Plugin.Instance.SendMessage("Server started!", 0);
+            Plugin.Instance.SendMessage("Server started!");
 
             _minecraftProcess.ErrorDataReceived -= Start_DataReceived;
             _minecraftProcess.OutputDataReceived -= Start_DataReceived;

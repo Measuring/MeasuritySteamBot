@@ -1,19 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Xml.Serialization;
 using MeasuritySteamBot.Attributes;
 using MeasuritySteamBot.Steam;
 using SteamKit2;
 
 namespace MeasuritySteamBot.Plugins
 {
-    /// <summary>
-    ///     Generic variant of the BasePlugin for IntelliSense support.
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    public abstract class BasePlugin<T> : BasePlugin
+    public abstract class BasePlugin<TPlugin, TSettings> : BasePlugin
+        where TPlugin : BasePlugin, new()
+        where TSettings : BaseSettings, new()
     {
         protected BasePlugin()
         {
@@ -21,9 +21,35 @@ namespace MeasuritySteamBot.Plugins
         }
 
         /// <summary>
-        ///     Current instance of the plugin.
+        ///     Current settings of the <see cref="BasePlugin" />.
         /// </summary>
-        public new static BasePlugin<T> Instance { get; set; }
+        public new TSettings Settings
+        {
+            get { return (TSettings)base.Settings; }
+        }
+
+        /// <summary>
+        ///     Current instance of the <see cref="BasePlugin" />.
+        /// </summary>
+        public new static BasePlugin<TPlugin, TSettings> Instance { get; internal set; }
+    }
+
+    /// <summary>
+    ///     Generic variant of the BasePlugin.
+    /// </summary>
+    /// <typeparam name="TPlugin"></typeparam>
+    public abstract class BasePlugin<TPlugin> : BasePlugin
+        where TPlugin : class, new()
+    {
+        protected BasePlugin()
+        {
+            Instance = this;
+        }
+
+        /// <summary>
+        ///     Current instance of the <see cref="BasePlugin" />.
+        /// </summary>
+        public new static BasePlugin<TPlugin> Instance { get; internal set; }
     }
 
     /// <summary>
@@ -58,6 +84,11 @@ namespace MeasuritySteamBot.Plugins
         /// </summary>
         public static BasePlugin Instance { get; set; }
 
+        /// <summary>
+        ///     Current settings of the <see cref="BasePlugin" />.
+        /// </summary>
+        public BaseSettings Settings { get; internal set; }
+
         public Bot Bot { get; protected internal set; }
 
         /// <summary>
@@ -77,9 +108,47 @@ namespace MeasuritySteamBot.Plugins
         }
 
         /// <summary>
-        ///     Sender of the command. 0 for console operator.
+        ///     Sender of the latest command. 0 for console operator.
         /// </summary>
-        public ulong Sender { get; protected internal set; }
+        public ulong Sender { get; internal set; }
+
+        /// <summary>
+        ///     Directory that contains per plugin specific data.
+        /// </summary>
+        public string DataDir { get; internal set; }
+
+        /// <summary>
+        ///     Directory where all the <see cref="BasePlugin" />s are located.
+        /// </summary>
+        public string PluginsDir { get; internal set; }
+
+        /// <summary>
+        ///     Used by the <see cref="PluginManager" /> to initialize the <see cref="BasePlugin" />.
+        ///     The <see cref="Initialize" /> method is for the <see cref="BasePlugin" /> author.
+        /// </summary>
+        internal void Setup(PluginAssembly plugin)
+        {
+            // Setup plugin data structure.
+            Directory.CreateDirectory(DataDir);
+
+            // Setup Settings.xml
+            var asmName = plugin.Assembly.GetName();
+            var settingsType = plugin.Assembly.GetType(string.Format("{0}.{1}", asmName.Name, "Settings"));
+            var settingsFile = Path.Combine(DataDir, "Settings.xml");
+
+            if (settingsType != null)
+            {
+                var serializer = new XmlSerializer(settingsType);
+                if (!File.Exists(settingsFile))
+                {
+                    using (var stream = new FileStream(settingsFile, FileMode.CreateNew))
+                        serializer.Serialize(stream, Activator.CreateInstance(settingsType));
+                }
+
+                using (var stream = new FileStream(settingsFile, FileMode.Open))
+                    Settings = (BaseSettings)serializer.Deserialize(stream);
+            }
+        }
 
         /// <summary>
         ///     Method for initializing the plugin. Do not use the constructor for this.

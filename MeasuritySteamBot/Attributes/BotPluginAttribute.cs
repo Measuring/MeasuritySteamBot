@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 
 namespace MeasuritySteamBot.Attributes
 {
@@ -12,7 +13,6 @@ namespace MeasuritySteamBot.Attributes
             Name = name;
             Description = description;
             Author = author;
-            Version = new Version(1, 0);
         }
 
         public BotPluginAttribute(string name, string description, string author, Version version)

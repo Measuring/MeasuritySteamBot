@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text;
 using System.Xml.Serialization;
 using MeasuritySteamBot.Attributes;
+using MeasuritySteamBot.Extensions;
 using MeasuritySteamBot.Steam;
 using SteamKit2;
 
@@ -60,21 +61,6 @@ namespace MeasuritySteamBot.Plugins
         protected BasePlugin()
         {
             Instance = this;
-            Categories =
-                GetType().Module.GetTypes()
-                    .Where(
-                        t =>
-                            t.IsClass && t.IsPublic && !t.IsAutoClass &&
-                            t.Namespace.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries)
-                                .Last()
-                                .StartsWith("Categories", StringComparison.OrdinalIgnoreCase))
-                    .Select(t => new { Type = t, Attribute = t.GetCustomAttribute<BotDisplayAttribute>() })
-                    .Select(
-                        t =>
-                            new KeyValuePair<string, PluginCategory>(
-                                t.Attribute != null ? t.Attribute.Name : t.Type.Name.ToLowerInvariant(),
-                                new PluginCategory(t.Type)))
-                    .ToDictionary(k => k.Key, k => k.Value);
         }
 
         internal Dictionary<string, PluginCategory> Categories { get; set; }
@@ -98,11 +84,12 @@ namespace MeasuritySteamBot.Plugins
         {
             get
             {
-                var attr = GetType().GetCustomAttribute<BotPluginAttribute>();
+                var type = GetType();
+                var attr = type.GetCustomAttribute<BotPluginAttribute>();
                 if (attr == null)
                     throw new Exception("Plugin information was not given by plugin.");
                 return string.Format("[{0}{2}] {1}{3}", attr.Name, attr.Description,
-                    attr.Version != null ? " v" + attr.Version : "",
+                    " v" + (attr.Version ?? type.Assembly.GetName().Version).ToShortString(),
                     !string.IsNullOrWhiteSpace(attr.Author) ? " by " + attr.Author : "");
             }
         }

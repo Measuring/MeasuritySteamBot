@@ -11,7 +11,7 @@ namespace MeasuritySteamBot.Plugins
         public PluginCategory(Type categoryType)
         {
             CategoryType = categoryType;
-            CategoryInstance = Activator.CreateInstance(CategoryType);
+            CategoryInstance = (BaseCategory)Activator.CreateInstance(CategoryType);
 
             // Get category name.
             var attrName = CategoryType.GetCustomAttribute<BotDisplayAttribute>();
@@ -21,6 +21,7 @@ namespace MeasuritySteamBot.Plugins
             Commands =
                 categoryType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.InvokeMethod |
                                         BindingFlags.DeclaredOnly)
+                    .Where(m => !m.IsVirtual)
                     .Select(m => new { Method = m, NameAttribute = m.GetCustomAttribute<BotDisplayAttribute>() })
                     .Select(
                         m =>
@@ -32,7 +33,7 @@ namespace MeasuritySteamBot.Plugins
         }
 
         protected Type CategoryType { get; set; }
-        public object CategoryInstance { get; set; }
+        public BaseCategory CategoryInstance { get; set; }
         public string Description { get; protected set; }
         public Dictionary<string, PluginCommand> Commands { get; set; }
     }

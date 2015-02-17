@@ -19,7 +19,7 @@ namespace MeasuritySteamBot
             _bot = new Bot(_username, _password);
 
             // Listen for commands.
-            Task.Factory.StartNew(CaptureInput, TaskCreationOptions.LongRunning).ContinueWith((t) =>
+            Task.Factory.StartNew(CaptureInput, TaskCreationOptions.LongRunning).ContinueWith(t =>
             {
                 Console.WriteLine("\r\nPress a key to continue..");
                 Console.ReadKey(true);
@@ -60,13 +60,20 @@ namespace MeasuritySteamBot
         {
             while (true)
             {
+                // Handle program-specific commands.
                 var input = Console.ReadLine();
                 if (new[] { "exit", "stop", "quit", "close" }.Contains(input, StringComparer.OrdinalIgnoreCase))
                 {
                     _bot.Dispose();
                     break;
                 }
+                if (new[] { "cls", "clear" }.Contains(input, StringComparer.OrdinalIgnoreCase))
+                {
+                    Console.Clear();
+                    continue;
+                }
 
+                // Handle bot commands.
                 _bot.Execute(input);
             }
         }

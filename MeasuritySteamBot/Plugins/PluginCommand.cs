@@ -56,19 +56,25 @@ namespace MeasuritySteamBot.Plugins
         public string Help()
         {
             var helpBuilder = new StringBuilder();
+            var catType = CategoryInstance.GetType();
+            var catAttr = catType.GetCustomAttribute<BotDisplayAttribute>();
+            var comAttr = MethodInfo.GetCustomAttribute<BotDisplayAttribute>();
+
+            if (!string.IsNullOrWhiteSpace(comAttr.Description))
+            {
+                helpBuilder.AppendLine(comAttr.Description);
+            }
 
             // Command indicator.
+            helpBuilder.Append("Usage: ");
             helpBuilder.Append('/');
 
             // Category name.
-            var catType = CategoryInstance.GetType();
-            var catAttr = catType.GetCustomAttribute<BotDisplayAttribute>();
             helpBuilder.Append(catAttr != null ? catAttr.Name : catType.Name.ToLowerInvariant());
             helpBuilder.Append(' ');
 
             // Command name.
-            var comAttr = MethodInfo.GetCustomAttribute<BotDisplayAttribute>();
-            helpBuilder.Append(comAttr != null ? comAttr.Name : MethodInfo.Name.ToLowerInvariant());
+            helpBuilder.Append(comAttr != null && !string.IsNullOrWhiteSpace(comAttr.Name) ? comAttr.Name : MethodInfo.Name.ToLowerInvariant());
 
             // Parameters.
             if (Parameters.Count > 0)

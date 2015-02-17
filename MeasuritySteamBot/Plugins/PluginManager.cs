@@ -46,6 +46,13 @@ namespace MeasuritySteamBot.Plugins
             // Cleanup plugin references.
             foreach (var plugin in Plugins)
             {
+                // Cleanup category specific resources.
+                foreach (var category in plugin.Categories)
+                {
+                    category.Value.CategoryInstance.Dispose();
+                }
+
+                // Plugin author's code.
                 plugin.Plugin.Dispose();
             }
             Plugins.Clear();
@@ -91,14 +98,14 @@ namespace MeasuritySteamBot.Plugins
                 AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += AssemblyResolve;
                 foreach (var plugin in new DirectoryInfo(PluginsDir).GetFiles("*.dll"))
                 {
-                    using (var stream = new FileStream(plugin.FullName, FileMode.Open))
+                    var bytes = new byte[0];
+                    using (var stream = new FileStream(plugin.FullName, FileMode.Open, FileAccess.Read))
                     {
-                        var bytes = new byte[stream.Length];
+                        bytes = new byte[stream.Length];
                         stream.Read(bytes, 0, bytes.Length);
-
-                        var asm = AppDomain.CurrentDomain.Load(bytes);
-                        LoadPlugin(Bot, asm);
                     }
+                    var asm = AppDomain.CurrentDomain.Load(bytes);
+                    LoadPlugin(Bot, asm);
                 }
             });
         }
@@ -114,6 +121,7 @@ namespace MeasuritySteamBot.Plugins
             var plugin = new PluginAssembly(pluginAssembly);
 
             // Global per plugin initialze.
+            plugin.Plugin.Categories = plugin.Categories;
             plugin.Plugin.Bot = bot;
             plugin.Plugin.PluginsDir = PluginsDir;
             plugin.Plugin.DataDir = Path.Combine(PluginsDir, DataDir, plugin.Assembly.GetName().Name);
@@ -124,7 +132,7 @@ namespace MeasuritySteamBot.Plugins
 
             Plugins.Add(plugin);
 
-            Console.WriteLine(plugin.Plugin.InitializedMessage);
+            Bot.SendMessage(plugin.Plugin.InitializedMessage);
         }
 
         /// <summary>

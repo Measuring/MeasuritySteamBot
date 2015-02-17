@@ -14,7 +14,7 @@ namespace Minecraft
             base.Initialize();
         }
 
-        // Clean up unmanaged resources and bloat from users PC if applicable.
+        // Stop processes and clean up unmanaged resources and bloat from users PC if applicable.
         public override void Dispose()
         {
             base.Dispose();

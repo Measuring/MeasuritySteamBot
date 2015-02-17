@@ -2,14 +2,16 @@
 using System.Diagnostics;
 using System.IO;
 using MeasuritySteamBot.Attributes;
+using MeasuritySteamBot.Plugins;
 
 namespace Minecraft.Categories
 {
     [BotDisplay("mc", "Moderating Minecraft servers.")]
     [BotAuthorize]
-    public class Minecraft
+    public class Minecraft : BaseCategory
     {
-        private Process _minecraftProcess;
+        protected internal Process MinecraftProcess;
+
 
         /// <summary>
         ///     Starts the Minecraft server.
@@ -19,7 +21,7 @@ namespace Minecraft.Categories
         {
             Plugin.Instance.SendMessage("Server starting.. (this will take a while)");
             var path = Path.Combine(Plugin.Instance.Settings.ServerDirectory, Plugin.Instance.Settings.ExeName);
-            _minecraftProcess = new Process
+            MinecraftProcess = new Process
             {
                 StartInfo =
                 {
@@ -32,14 +34,14 @@ namespace Minecraft.Categories
                     CreateNoWindow = true
                 }
             };
-            _minecraftProcess.EnableRaisingEvents = true;
-            _minecraftProcess.ErrorDataReceived += Start_DataReceived;
-            _minecraftProcess.OutputDataReceived += Start_DataReceived;
+            MinecraftProcess.EnableRaisingEvents = true;
+            MinecraftProcess.ErrorDataReceived += Start_DataReceived;
+            MinecraftProcess.OutputDataReceived += Start_DataReceived;
 
-            _minecraftProcess.Start();
+            MinecraftProcess.Start();
 
-            _minecraftProcess.BeginErrorReadLine();
-            _minecraftProcess.BeginOutputReadLine();
+            MinecraftProcess.BeginErrorReadLine();
+            MinecraftProcess.BeginOutputReadLine();
         }
 
         /// <summary>
@@ -54,8 +56,8 @@ namespace Minecraft.Categories
                 return;
             Plugin.Instance.SendMessage("Server started!");
 
-            _minecraftProcess.ErrorDataReceived -= Start_DataReceived;
-            _minecraftProcess.OutputDataReceived -= Start_DataReceived;
+            MinecraftProcess.ErrorDataReceived -= Start_DataReceived;
+            MinecraftProcess.OutputDataReceived -= Start_DataReceived;
         }
 
         /// <summary>
@@ -65,12 +67,20 @@ namespace Minecraft.Categories
         [BotDisplay("Exec", "Executes a command on the server.")]
         public void Execute([BotDisplay(Description = "Command to execute on the server.")] string command)
         {
-            if (_minecraftProcess == null || _minecraftProcess.HasExited)
+            if (MinecraftProcess == null || MinecraftProcess.HasExited)
             {
                 Plugin.Instance.SendMessage("No Minecraft server is currently running.");
                 return;
             }
-            _minecraftProcess.StandardInput.WriteLine(command);
+            MinecraftProcess.StandardInput.WriteLine(command);
+        }
+
+        public override void Dispose()
+        {
+            if (MinecraftProcess != null && !MinecraftProcess.HasExited)
+            {
+                Execute("stop");
+            }
         }
     }
 }

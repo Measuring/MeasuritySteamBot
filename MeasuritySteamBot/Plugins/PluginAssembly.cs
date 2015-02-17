@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using MeasuritySteamBot.Attributes;
@@ -23,7 +22,7 @@ namespace MeasuritySteamBot.Plugins
 
             Categories =
                 Assembly.GetExportedTypes()
-                    .Where(t => t.Namespace.Split('.').Last() == "Categories")
+                    .Where(t => typeof(BaseCategory).IsAssignableFrom(t))
                     .Select(t => new { Type = t, Attribute = t.GetCustomAttribute<BotDisplayAttribute>() })
                     .Select(
                         t =>

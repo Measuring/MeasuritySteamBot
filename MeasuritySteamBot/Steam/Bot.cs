@@ -9,6 +9,7 @@ using SteamKit2;
 
 namespace MeasuritySteamBot.Steam
 {
+    [Serializable]
     public class Bot : IDisposable
     {
         private bool _firstHeader;
@@ -33,6 +34,8 @@ namespace MeasuritySteamBot.Steam
         public SteamFriends Friends { get; set; }
         public CallbackManager Manager { get; set; }
 
+        public bool IsConnecting { get; protected set; }
+
         /// <summary>
         ///     Returns true if this <see cref="Bot" /> has a (possibly inactive) connection with Steam.
         /// </summary>
@@ -47,6 +50,9 @@ namespace MeasuritySteamBot.Steam
         /// </summary>
         public void Dispose()
         {
+            // Cancel tasks.
+            IsConnecting = false;
+
             // Unload plugins.
             Plugins.Dispose();
 
@@ -85,7 +91,8 @@ namespace MeasuritySteamBot.Steam
 
             // Wait for connection result.
             var retryAttempt = 0;
-            while (true)
+            IsConnecting = true;
+            while (IsConnecting)
             {
                 var callback = Client.WaitForCallback(true, TimeSpan.FromSeconds(5));
                 if (callback == null)
@@ -104,12 +111,14 @@ namespace MeasuritySteamBot.Steam
                     }
 
                     Console.WriteLine("Connected to Steam! Logging in: {0}", User);
+                    IsConnecting = false;
                 });
 
                 var attempt = retryAttempt;
                 callback.Handle<SteamClient.DisconnectedCallback>(
                     c => Console.WriteLine("Lost connection with Steam.. retrying.." + attempt));
             }
+            return IsConnected;
         }
 
         /// <summary>
@@ -208,6 +217,9 @@ namespace MeasuritySteamBot.Steam
         /// <param name="steamId">SteamID of the Steam user. Zero if user is console operator.</param>
         public void Execute(string input, ulong steamId = 0)
         {
+            if (!IsConnected)
+                return;
+
             // Split up input.
             var args = ParseCommand(input);
 
@@ -217,14 +229,26 @@ namespace MeasuritySteamBot.Steam
 
             if (steamId == 0 || input.StartsWith("/", StringComparison.OrdinalIgnoreCase))
             {
-                if (((string)args[0]).StartsWith("help", StringComparison.OrdinalIgnoreCase))
+                var category = ((string)args[0]);
+
+                switch (category)
                 {
-                    Plugins.Help(args, this, steamId);
-                }
-                else
-                {
-                    // Execute command from user.
-                    Plugins.Execute(args, steamId);
+                    case "reload":
+                        SendMessage("Reloading plugins..", steamId);
+                        Plugins.LoadPlugins();
+                        SendMessage("Plugins reloaded.", steamId);
+                        break;
+                    default:
+                        if (category.StartsWith("help", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Plugins.Help(args, this, steamId);
+                        }
+                        else
+                        {
+                            // Execute command from user.
+                            Plugins.Execute(args, steamId);
+                        }
+                        break;
                 }
             }
         }

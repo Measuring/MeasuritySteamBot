@@ -9,6 +9,7 @@ using SteamKit2;
 
 namespace MeasuritySteamBot.Plugins
 {
+    [Serializable]
     internal class PluginManager : IDisposable
     {
         public PluginManager(Bot bot, string pluginsDir = "Plugins", string dataDir = "Data")
@@ -19,7 +20,6 @@ namespace MeasuritySteamBot.Plugins
             Bot = bot;
             PluginsDir = pluginsDir;
             DataDir = dataDir;
-            SetupDomain();
             Plugins = new List<PluginAssembly>();
         }
 
@@ -47,29 +47,19 @@ namespace MeasuritySteamBot.Plugins
             {
                 plugin.Plugin.Dispose();
             }
-        }
 
-        protected void SetupDomain()
-        {
-            // TODO: Enable hot plugin reloading through separate AppDomain.
-            //var setup = new AppDomainSetup
-            //{
-            //    ApplicationBase = AppDomain.CurrentDomain.BaseDirectory
-            //};
-            //Domain = AppDomain.CreateDomain("SteamBotPluginDomain", AppDomain.CurrentDomain.Evidence, setup);
-            Domain = AppDomain.CurrentDomain;
-            Domain.AssemblyResolve += AssemblyResolve;
-            Domain.ReflectionOnlyAssemblyResolve += AssemblyResolve;
-            //Domain.FirstChanceException += (sender, args) => Bot.SendErrorMessage(args.Exception.ToString());
+            if (Domain != AppDomain.CurrentDomain)
+                AppDomain.Unload(Domain);
         }
 
         protected Assembly AssemblyResolve(object sender, ResolveEventArgs args)
         {
-            var dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            var newPath = Path.Combine(dir,
-                "Plugins", new AssemblyName(args.Name).Name);
+            var curDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            var dir = Path.Combine(curDir, PluginsDir, Path.ChangeExtension(args.Name, ".dll"));
+            if (!File.Exists(dir))
+                dir = Path.Combine(curDir, args.Name);
 
-            return File.Exists(newPath) ? Assembly.LoadFrom(newPath) : args.RequestingAssembly;
+            return Assembly.LoadFrom(dir) ?? args.RequestingAssembly;
         }
 
         /// <summary>
@@ -77,21 +67,40 @@ namespace MeasuritySteamBot.Plugins
         /// </summary>
         public void LoadPlugins()
         {
-            foreach (var plugin in new DirectoryInfo(PluginsDir).GetFiles("*.dll"))
+            // Unload domain.
+            if (Domain != null)
             {
-                LoadPlugin(Bot, plugin);
+                Domain.AssemblyResolve -= AssemblyResolve;
+                Domain.ReflectionOnlyAssemblyResolve -= AssemblyResolve;
+                AppDomain.Unload(Domain);
             }
+
+            // Setup domain.
+            Domain = AppDomain.CreateDomain(Guid.NewGuid().ToString("N"), AppDomain.CurrentDomain.Evidence,
+                AppDomain.CurrentDomain.BaseDirectory, PluginsDir, true);
+            Domain.AssemblyResolve += AssemblyResolve;
+            Domain.ReflectionOnlyAssemblyResolve += AssemblyResolve;
+
+            // Register plugins.
+            Domain.DoCallBack(() =>
+            {
+                foreach (var plugin in new DirectoryInfo(PluginsDir).GetFiles("*.dll"))
+                {
+                    var asm = AppDomain.CurrentDomain.Load(plugin.FullName);
+                    LoadPlugin(Bot, asm);
+                }
+            });
         }
 
         /// <summary>
         ///     Loads the plugin and caches the required reflection data.
         /// </summary>
         /// <param name="bot">Bot that handles the execution of the <see cref="BasePlugin" />.</param>
-        /// <param name="pluginDll">Dll file of the <see cref="BasePlugin" />.</param>
-        public void LoadPlugin(Bot bot, FileInfo pluginDll)
+        /// <param name="pluginAssembly">Assembly of the <see cref="BasePlugin" />.</param>
+        public void LoadPlugin(Bot bot, Assembly pluginAssembly)
         {
             // Cache plugin metadata through reflection.
-            var plugin = new PluginAssembly(Domain, pluginDll.Name);
+            var plugin = new PluginAssembly(pluginAssembly);
 
             // Global per plugin initialze.
             plugin.Plugin.Bot = bot;

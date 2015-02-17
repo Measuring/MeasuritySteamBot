@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using MeasuritySteamBot.Steam;
@@ -17,12 +18,15 @@ namespace MeasuritySteamBot
             LoadConfig();
             _bot = new Bot(_username, _password);
 
+            // Listen for commands.
+            Task.Factory.StartNew(CaptureInput, TaskCreationOptions.LongRunning);
+
             _bot.LoadPlugins();
             _bot.Connect();
             _bot.Logon();
 
-            // Capture commands.
-            Task.Factory.StartNew(CaptureInput, TaskCreationOptions.LongRunning);
+            Console.WriteLine("\r\nPress a key to continue..");
+            Console.ReadKey(true);
         }
 
         /// <summary>
@@ -55,7 +59,14 @@ namespace MeasuritySteamBot
         {
             while (true)
             {
-                _bot.Execute(Console.ReadLine());
+                var input = Console.ReadLine();
+                if (new[] { "exit", "stop", "quit", "close" }.Contains(input, StringComparer.OrdinalIgnoreCase))
+                {
+                    _bot.Dispose();
+                    break;
+                }
+
+                _bot.Execute(input);
             }
         }
     }

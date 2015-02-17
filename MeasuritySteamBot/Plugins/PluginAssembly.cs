@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using MeasuritySteamBot.Attributes;
@@ -9,9 +10,9 @@ namespace MeasuritySteamBot.Plugins
 {
     internal class PluginAssembly
     {
-        public PluginAssembly(AppDomain domain, string dll)
+        public PluginAssembly(Assembly assembly)
         {
-            Assembly = domain.Load(dll);
+            Assembly = assembly;
 
             var type = Assembly.GetExportedTypes().FirstOrDefault(t => typeof(BasePlugin).IsAssignableFrom(t));
             if (type == null)

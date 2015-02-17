@@ -5,20 +5,31 @@ namespace MeasuritySteamBot.Attributes
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
     public class BotAuthorizeAttribute : Attribute
     {
-        private string _group;
+        private string _name;
 
-        public BotAuthorizeAttribute(string @group)
+        /// <summary>
+        ///     Specifies that this class or method requires rights.
+        /// </summary>
+        public BotAuthorizeAttribute()
         {
-            _group = @group;
         }
 
         /// <summary>
-        ///     Lowercase group name that the user must be in for authorizations.
+        ///     Creates an authentication name that must be fulfilled by the user to execute this command.
         /// </summary>
-        public string Group
+        /// <param name="name"></param>
+        public BotAuthorizeAttribute(string name)
         {
-            get { return _group; }
-            protected set { _group = value.ToLowerInvariant(); }
+            _name = name;
+        }
+
+        /// <summary>
+        ///     Lowercase name name that the user must be in for authorizations.
+        /// </summary>
+        public string Name
+        {
+            get { return _name; }
+            protected set { _name = value.ToLowerInvariant(); }
         }
     }
 }

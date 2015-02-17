@@ -6,7 +6,7 @@ using MeasuritySteamBot.Attributes;
 namespace Minecraft.Categories
 {
     [BotDisplay("mc", "Moderating Minecraft servers.")]
-    [BotAuthorize("Administrator")]
+    [BotAuthorize]
     public class Minecraft
     {
         private Process _minecraftProcess;

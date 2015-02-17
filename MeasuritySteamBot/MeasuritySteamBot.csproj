@@ -50,6 +50,7 @@
     <Compile Include="Attributes\BotAuthorizeAttribute.cs" />
     <Compile Include="Attributes\BotDisplayAttribute.cs" />
     <Compile Include="Attributes\BotPluginAttribute.cs" />
+    <Compile Include="Exceptions\InvalidPluginException.cs" />
     <Compile Include="Plugins\BasePlugin.cs" />
     <Compile Include="Plugins\BaseSettings.cs" />
     <Compile Include="Plugins\PluginAssembly.cs" />

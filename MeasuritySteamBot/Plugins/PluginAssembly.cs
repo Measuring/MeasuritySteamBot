@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Linq;
 using System.Reflection;
 using MeasuritySteamBot.Attributes;
+using MeasuritySteamBot.Exceptions;
 
 namespace MeasuritySteamBot.Plugins
 {
@@ -13,13 +13,15 @@ namespace MeasuritySteamBot.Plugins
         {
             Assembly = domain.Load(dll);
 
-            var type = Assembly.GetType(string.Format("{0}.{1}", Assembly.GetName().Name, "Plugin"));
+            var type = Assembly.GetExportedTypes().FirstOrDefault(t => typeof(BasePlugin).IsAssignableFrom(t));
+            if (type == null)
+                throw new InvalidPluginException(Assembly.GetName().Name);
             Plugin =
                 (BasePlugin)
                     Activator.CreateInstance(type);
 
             Categories =
-                Assembly.GetTypes()
+                Assembly.GetExportedTypes()
                     .Where(t => t.Namespace.Split('.').Last() == "Categories")
                     .Select(t => new { Type = t, Attribute = t.GetCustomAttribute<BotDisplayAttribute>() })
                     .Select(

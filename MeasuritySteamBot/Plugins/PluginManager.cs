@@ -11,7 +11,7 @@ namespace MeasuritySteamBot.Plugins
 {
     internal class PluginManager : IDisposable
     {
-        public PluginManager(Bot bot, string pluginsDir, string dataDir = "Data")
+        public PluginManager(Bot bot, string pluginsDir = "Plugins", string dataDir = "Data")
         {
             if (!Directory.Exists(pluginsDir))
                 Directory.CreateDirectory(Path.Combine(pluginsDir, dataDir));

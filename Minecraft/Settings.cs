@@ -9,6 +9,7 @@ namespace Minecraft
     {
         public Settings()
         {
+            // Default settings here.
             ServerDirectory = @"D:\Games\Minecraft\Servers\Monster 1.1.2\";
             ExeName = "ServerStart.bat";
         }

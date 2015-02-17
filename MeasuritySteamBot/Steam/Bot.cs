@@ -11,13 +11,15 @@ namespace MeasuritySteamBot.Steam
 {
     public class Bot : IDisposable
     {
-        private bool _firstHeader = true;
+        private bool _firstHeader;
 
         public Bot(string username, string password)
         {
+            _firstHeader = true;
+
             Username = username;
             Password = password;
-            Plugins = new PluginManager(this, "Plugins");
+            Plugins = new PluginManager(this);
         }
 
         public string Username { get; set; }
@@ -31,6 +33,9 @@ namespace MeasuritySteamBot.Steam
         public SteamFriends Friends { get; set; }
         public CallbackManager Manager { get; set; }
 
+        /// <summary>
+        ///     Returns true if this <see cref="Bot" /> has a (possibly inactive) connection with Steam.
+        /// </summary>
         public bool IsConnected
         {
             get { return Client != null && Client.IsConnected; }
@@ -75,29 +80,36 @@ namespace MeasuritySteamBot.Steam
                 Friends = Client.GetHandler<SteamFriends>();
             }
 
+            // Initial connection attempt.
             Client.Connect();
 
             // Wait for connection result.
-            var isConnecting = true;
-            while (isConnecting)
+            var retryAttempt = 0;
+            while (true)
             {
-                var callback = Client.WaitForCallback(true);
+                var callback = Client.WaitForCallback(true, TimeSpan.FromSeconds(5));
+                if (callback == null)
+                {
+                    Client.Connect();
+                    retryAttempt++;
+                    continue;
+                }
 
                 callback.Handle<SteamClient.ConnectedCallback>(c =>
                 {
                     if (c.Result != EResult.OK)
                     {
                         Console.WriteLine("Unable to connect to Steam: {0}", c.Result);
-                        isConnecting = false;
                         return;
                     }
 
                     Console.WriteLine("Connected to Steam! Logging in: {0}", User);
-                    isConnecting = false;
                 });
-            }
 
-            return true;
+                var attempt = retryAttempt;
+                callback.Handle<SteamClient.DisconnectedCallback>(
+                    c => Console.WriteLine("Lost connection with Steam.. retrying.." + attempt));
+            }
         }
 
         /// <summary>
@@ -178,6 +190,9 @@ namespace MeasuritySteamBot.Steam
             return loginSuccess;
         }
 
+        /// <summary>
+        ///     Loads all the plugins that this <see cref="Bot" /> has access to.
+        /// </summary>
         public void LoadPlugins()
         {
             WriteHeader("Loading plugins");
@@ -186,6 +201,11 @@ namespace MeasuritySteamBot.Steam
             Plugins.LoadPlugins();
         }
 
+        /// <summary>
+        ///     Executes a command on this <see cref="Bot" />'s available plugins.
+        /// </summary>
+        /// <param name="input">Inputted command by the user.</param>
+        /// <param name="steamId">SteamID of the Steam user. Zero if user is console operator.</param>
         public void Execute(string input, ulong steamId = 0)
         {
             // Split up input.
@@ -210,7 +230,7 @@ namespace MeasuritySteamBot.Steam
         }
 
         /// <summary>
-        ///     Parses the input into processible parts.
+        ///     Parses the input into processable parts.
         /// </summary>
         /// <param name="command">Command to parse from the user.</param>
         /// <returns></returns>
@@ -247,7 +267,7 @@ namespace MeasuritySteamBot.Steam
         }
 
         /// <summary>
-        /// Sends an error message to the requesting user.
+        ///     Sends an error message to the requesting user.
         /// </summary>
         /// <param name="message">Error message to send.</param>
         /// <param name="steamId">SteamId to send error message to. If null, sends error message to <see cref="Console" />.</param>
@@ -265,7 +285,11 @@ namespace MeasuritySteamBot.Steam
                 Friends.SendChatMessage(steamId, EChatEntryType.ChatMsg, message);
         }
 
-        public void WriteHeader(string message)
+        /// <summary>
+        ///     Writes a formatted message to the <see cref="Console" />.
+        /// </summary>
+        /// <param name="message"></param>
+        private void WriteHeader(string message)
         {
             const int padLength = 60;
             const char fillChar = '=';

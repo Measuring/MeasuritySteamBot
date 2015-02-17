@@ -50,6 +50,9 @@ namespace MeasuritySteamBot.Steam
         /// </summary>
         public void Dispose()
         {
+            if (Client != null)
+                Client.Disconnect();
+
             // Cancel tasks.
             IsConnecting = false;
 
@@ -61,8 +64,6 @@ namespace MeasuritySteamBot.Steam
                 Manager = null;
             if (User != null)
                 User.LogOff();
-            if (Client != null)
-                Client.Disconnect();
         }
 
         /// <summary>

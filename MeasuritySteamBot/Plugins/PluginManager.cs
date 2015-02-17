@@ -10,7 +10,7 @@ using SteamKit2;
 namespace MeasuritySteamBot.Plugins
 {
     [Serializable]
-    internal class PluginManager : IDisposable
+    internal class PluginManager : MarshalByRefObject, IDisposable
     {
         public PluginManager(Bot bot, string pluginsDir = "Plugins", string dataDir = "Data")
         {
@@ -43,13 +43,21 @@ namespace MeasuritySteamBot.Plugins
 
         public void Dispose()
         {
+            // Cleanup plugin references.
             foreach (var plugin in Plugins)
             {
                 plugin.Plugin.Dispose();
             }
+            Plugins.Clear();
 
-            if (Domain != AppDomain.CurrentDomain)
+            // Unload plugin AppDomain.
+            if (Domain != null && Domain != AppDomain.CurrentDomain)
+            {
+                Domain.AssemblyResolve -= AssemblyResolve;
+                Domain.ReflectionOnlyAssemblyResolve -= AssemblyResolve;
                 AppDomain.Unload(Domain);
+                Domain = null;
+            }
         }
 
         protected Assembly AssemblyResolve(object sender, ResolveEventArgs args)
@@ -68,26 +76,29 @@ namespace MeasuritySteamBot.Plugins
         public void LoadPlugins()
         {
             // Unload domain.
-            if (Domain != null)
-            {
-                Domain.AssemblyResolve -= AssemblyResolve;
-                Domain.ReflectionOnlyAssemblyResolve -= AssemblyResolve;
-                AppDomain.Unload(Domain);
-            }
+            Dispose();
 
             // Setup domain.
-            Domain = AppDomain.CreateDomain(Guid.NewGuid().ToString("N"), AppDomain.CurrentDomain.Evidence,
-                AppDomain.CurrentDomain.BaseDirectory, PluginsDir, true);
-            Domain.AssemblyResolve += AssemblyResolve;
-            Domain.ReflectionOnlyAssemblyResolve += AssemblyResolve;
+            var setup = new AppDomainSetup();
+            setup.ApplicationBase = AppDomain.CurrentDomain.BaseDirectory;
+
+            Domain = AppDomain.CreateDomain(Guid.NewGuid().ToString("N"), AppDomain.CurrentDomain.Evidence, setup);
 
             // Register plugins.
             Domain.DoCallBack(() =>
             {
+                AppDomain.CurrentDomain.AssemblyResolve += AssemblyResolve;
+                AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += AssemblyResolve;
                 foreach (var plugin in new DirectoryInfo(PluginsDir).GetFiles("*.dll"))
                 {
-                    var asm = AppDomain.CurrentDomain.Load(plugin.FullName);
-                    LoadPlugin(Bot, asm);
+                    using (var stream = new FileStream(plugin.FullName, FileMode.Open))
+                    {
+                        var bytes = new byte[stream.Length];
+                        stream.Read(bytes, 0, bytes.Length);
+
+                        var asm = AppDomain.CurrentDomain.Load(bytes);
+                        LoadPlugin(Bot, asm);
+                    }
                 }
             });
         }

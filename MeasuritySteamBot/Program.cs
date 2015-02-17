@@ -19,14 +19,15 @@ namespace MeasuritySteamBot
             _bot = new Bot(_username, _password);
 
             // Listen for commands.
-            Task.Factory.StartNew(CaptureInput, TaskCreationOptions.LongRunning);
+            Task.Factory.StartNew(CaptureInput, TaskCreationOptions.LongRunning).ContinueWith((t) =>
+            {
+                Console.WriteLine("\r\nPress a key to continue..");
+                Console.ReadKey(true);
+            });
 
             _bot.LoadPlugins();
             _bot.Connect();
             _bot.Logon();
-
-            Console.WriteLine("\r\nPress a key to continue..");
-            Console.ReadKey(true);
         }
 
         /// <summary>
